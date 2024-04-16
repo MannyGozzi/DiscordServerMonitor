@@ -9,6 +9,7 @@ load_dotenv()
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
+SERVER_URL= os.getenv("SERVER_URL")
 intents = discord.Intents.default()
 intents.typing = False # don't need to know when someone is typing
 intents.presences = False # don't need to know when someone's status changes
@@ -40,7 +41,7 @@ class WebMonitor:
     async def monitor_website(self):
         await self.check_website()
 
-webMonitor = WebMonitor("http://71.84.26.162")
+webMonitor = WebMonitor(SERVER_URL)
 
 @client.event
 async def on_ready():
