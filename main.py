@@ -30,9 +30,10 @@ class WebMonitor:
                             self.stateGood = True
                             await send_discord_notification(f"{self.url} is up and running!")
                     elif self.stateGood:
-                        self.stateGood = False
-                        print(f"{self.url} is down! (Status code: {response.status})")
-                        await send_discord_notification(f"{self.url} is down! (Status code: {response.status})")
+                        if self.stateGood:
+                            self.stateGood = False
+                            print(f"{self.url} is down! (Status code: {response.status})")
+                            await send_discord_notification(f"{self.url} is down! (Status code: {response.status})")
         except aiohttp.ClientError as e:
             print(f"Error occurred: {e}")
             await send_discord_notification(f"Error occurred: {e}")
