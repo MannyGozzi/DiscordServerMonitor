@@ -19,7 +19,6 @@ class WebMonitor:
     def __init__(self, url):
         self.states = {}
 
-    # Logs responses and returns whether the response was good or bad
     async def response_logger(self, response, url):
         if response.status == 200 and self.states.get(url, False) == False:
             print(f"[{url}] is up and running!")
@@ -36,7 +35,7 @@ class WebMonitor:
                 async with session.post(url, headers=headers, data=data) as response:
                     return await self.response_logger(response, url)
         except aiohttp.ClientError as e:
-            self.handle_exception(url, e)
+            await self.handle_exception(url, e)
 
     async def get(self, url):
         try:
@@ -44,7 +43,7 @@ class WebMonitor:
                 async with session.get(url) as response:
                     return await self.response_logger(response, url)
         except aiohttp.ClientError as e:
-            self.handle_exception(url, e)
+            await self.handle_exception(url, e)
 
     async def handle_exception(self, url, e):
         if self.states.get(url, False):
