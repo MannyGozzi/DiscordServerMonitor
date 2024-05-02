@@ -17,32 +17,44 @@ client = discord.Client(intents=intents)
 
 class WebMonitor:
     def __init__(self, url):
-        self.stateGood = True
-        self.url = url
+        self.states = {}
 
-    async def response_logger(self, response, routeName):
-        if response.status == 200:
-            if not self.stateGood:
-                print(f"[{routeName}] {self.url} is up and running!")
-                self.stateGood = True
-                await send_discord_notification(f"{self.url} is up and running!")
-        elif self.stateGood:
-            if self.stateGood:
-                self.stateGood = False
-                print(f"[{routeName}] {self.url} is down! (Status code: {response.status})")
-                await send_discord_notification(f"{self.url} is down! (Status code: {response.status})")
-
-
-    async def check_website(self):
+    # Logs responses and returns whether the response was good or bad
+    async def response_logger(self, response, url):
+        if response.status == 200 and self.states.get(url, False) == False:
+            print(f"[{url}] is up and running!")
+            await send_discord_notification(f"[{url}] is up and running!")
+            self.states[url] = True
+        elif response.status != 200 and self.states.get(url, False) == True:
+            print(f"[{url}] is down! (Status code: {response.status})")
+            await send_discord_notification(f"{[url]} is down! (Status code: {response.status})")
+            self.states[url] = False
+    
+    async def post(self, url, headers, data):
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(self.url) as response:
-                    await self.response_logger(response, '/')
+                async with session.post(url, headers=headers, data=data) as response:
+                    return await self.response_logger(response, url)
         except aiohttp.ClientError as e:
-            if self.stateGood:
-                self.stateGood = False
-                await send_discord_notification(e)
-                print(e)
+            self.handle_exception(url, e)
+
+    async def get(self, url):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    return await self.response_logger(response, url)
+        except aiohttp.ClientError as e:
+            self.handle_exception(url, e)
+
+    async def handle_exception(self, url, e):
+        if self.states.get(url, False):
+            await send_discord_notification(f"[{url}] is down! (Error: {e})")
+        self.states[url] = False
+        print(e)
+
+    async def check_index(self):
+        return await self.get('https://team1.csc429.io/')
+
 
     async def submit_data(self):
         url = "https://team1.csc429.io/submit.php"
@@ -68,21 +80,15 @@ class WebMonitor:
             "phoneNumber": "ghi",
             "item": "Owl"
         }
+        return await self.post(url, headers, data)
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, headers=headers, data=data) as response:
-                    await self.response_logger(response, '/submit.php')
-        except aiohttp.ClientError as e:
-            if self.stateGood:
-                self.stateGood = False
-                await send_discord_notification(e)
-                print(e)
+        
 
-    @tasks.loop(minutes=1) 
+    @tasks.loop(seconds=5) 
     async def monitor_website(self):
-        await self.check_website()
+        await self.check_index()
         await self.submit_data()
+        
 
 webMonitor = WebMonitor(SERVER_URL)
 
