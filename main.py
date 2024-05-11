@@ -4,6 +4,7 @@ import discord
 from discord.ext import tasks  # Import the tasks extension
 from dotenv import load_dotenv
 import os
+from portMonitor import get_open_ports, find_port_changes
 
 load_dotenv()
 
@@ -28,10 +29,12 @@ class WebMonitor:
             print(f"[{url}] is down! (Status code: {response.status})")
             await send_discord_notification(f"{[url]} is down! (Status code: {response.status})")
             self.states[url] = False
-    
+
+
     async def post(self, url, headers, data):
         try:
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(url, headers=headers, data=data) as response:
                     return await self.response_logger(response, url)
         except aiohttp.ClientError as e:
@@ -39,7 +42,8 @@ class WebMonitor:
 
     async def get(self, url):
         try:
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url) as response:
                     return await self.response_logger(response, url)
         except aiohttp.ClientError as e:
@@ -83,10 +87,23 @@ class WebMonitor:
 
         
 
-    @tasks.loop(seconds=5) 
+    @tasks.loop(minutes=5) 
     async def monitor_website(self):
         await self.check_index()
         await self.submit_data()
+    
+    @tasks.loop(minutes=5)
+    async def scan_ports(self):
+        prev_ports = getattr(self, 'prev_ports', {})
+        curr_ports = get_open_ports(self.server_address)
+        changes = find_port_changes(prev_ports, curr_ports)
+        self.prev_ports = curr_ports
+        if changes:
+            await send_discord_notification(f"Port changes: {changes}")
+            print(changes)
+
+
+
         
 
 webMonitor = WebMonitor(SERVER_URL)
@@ -95,6 +112,7 @@ webMonitor = WebMonitor(SERVER_URL)
 async def on_ready():
     print(f"{client.user.name} is ready!")
     webMonitor.monitor_website.start()
+    webMonitor.scan_ports.start()
 
 async def send_discord_notification(message):
     channel = client.get_channel(DISCORD_CHANNEL_ID)

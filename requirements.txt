@@ -3,3 +3,4 @@ schedule
 discord.py
 python-dotenv
 aiohttp
+itertools
