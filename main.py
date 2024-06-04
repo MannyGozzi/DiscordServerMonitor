@@ -22,12 +22,12 @@ class WebMonitor:
 
     async def response_logger(self, response, url):
         if response.status == 200 and self.states.get(url, False) == False:
-            print(f"[{url}] is up and running!")
-            await send_discord_notification(f"[{url}] is up and running!")
+            print(f"[{url}] ✅")
+            await send_discord_notification(f"[{url}] ✅")
             self.states[url] = True
         elif response.status != 200 and self.states.get(url, False) == True:
-            print(f"[{url}] is down! (Status code: {response.status})")
-            await send_discord_notification(f"{[url]} is down! (Status code: {response.status})")
+            print(f"[{url}] ❌ (Status code: {response.status})")
+            await send_discord_notification(f"{[url]} ❌ (Status code: {response.status})")
             self.states[url] = False
 
 
@@ -51,7 +51,7 @@ class WebMonitor:
 
     async def handle_exception(self, url, e):
         if self.states.get(url, False):
-            await send_discord_notification(f"[{url}] is down! (Error: {e})")
+            await send_discord_notification(f"[{url}] ❌ (Error: {e})")
         self.states[url] = False
         print(e)
 
@@ -110,7 +110,7 @@ webMonitor = WebMonitor(SERVER_URL)
 
 @client.event
 async def on_ready():
-    print(f"{client.user.name} is ready!")
+    print(f"{client.user.name} is online! 🔥")
     webMonitor.monitor_website.start()
     webMonitor.scan_ports.start()
 
